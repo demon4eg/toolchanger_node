@@ -1,0 +1,28 @@
+# ESP-IDF build artifacts
+build/
+sdkconfig
+sdkconfig.old
+sdkconfig.backup
+
+# Generated files
+*.o
+*.a
+*.d
+*.cproject
+*.project
+*.pyc
+__pycache__/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# micro-ROS generated files
+components/micro_ros_espidf_component/libmicroros.a
+components/micro_ros_espidf_component/micro_ros_src/
+components/micro_ros_espidf_component/include/
+
+# Logs
+*.log
