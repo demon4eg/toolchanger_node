@@ -1,7 +1,8 @@
-#ifndef STATE_MACHINE_H
-#define STATE_MACHINE_H
+#pragma once
+
+#include <stdint.h>
+#include <stdbool.h>
 
 void state_machine_init(void);
 void state_machine_task(void *arg);
-
-#endif
+void state_machine_button_unlock(void);  // For physical button interrupt

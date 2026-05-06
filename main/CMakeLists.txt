@@ -2,7 +2,7 @@ idf_component_register(
     SRCS 
         main.c
         ros_manager.c
-        ds18b20_task.c
+        hardware/ds18b20_task.c
         state_machine.c
         hardware.c
     INCLUDE_DIRS 
@@ -12,6 +12,7 @@ idf_component_register(
         nvs_flash
         esp_wifi
         esp_event
+        esp_timer
         onewire_bus
         micro_ros_espidf_component
 )
