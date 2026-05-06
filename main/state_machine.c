@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
+#include "freertos/portmacro.h"
 
 #define TAG "STATE_MACHINE"
 
@@ -35,6 +36,7 @@ static bool warning_published = false;
 extern uint8_t ros_last_command;
 extern uint16_t ros_last_tool_id;
 extern bool ros_command_received;
+extern portMUX_TYPE ros_spinlock;
 
 static const char* state_names[] = {"IDLE", "ATTACHING", "ATTACHED", "UNLOCKING", "ERROR"};
 
@@ -175,9 +177,16 @@ void state_machine_task(void *arg)
         
         // Handle ROS commands
         if (ros_command_received) {
-            ros_command_received = false;
+            uint8_t cmd;
+            uint16_t tool_id;
             
-            switch(ros_last_command) {
+            portENTER_CRITICAL(&ros_spinlock);
+            cmd = ros_last_command;
+            tool_id = ros_last_tool_id;
+            ros_command_received = false;
+            portEXIT_CRITICAL(&ros_spinlock);
+            
+            switch(cmd) {
                 case CMD_UNLOCK:  // 0 - UNLOCK command
                     if (current_state == IDLE && !waiting_for_tool) {
                         // ATTACH sequence: unlock to insert tool
