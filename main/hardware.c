@@ -43,6 +43,19 @@ void hardware_init(void)
     ESP_LOGI(TAG, "Hardware initialized");
 }
 
+void hardware_button_init(void)
+{
+    gpio_config_t btn_config = {
+        .pin_bit_mask = (1ULL << PIN_BUTTON_UNLOCK),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_NEGEDGE,
+    };
+    gpio_config(&btn_config);
+    ESP_LOGI(TAG, "Button configured on GPIO%d", PIN_BUTTON_UNLOCK);
+}
+
 void hardware_set_5v(bool enable)
 {
     gpio_set_level(PIN_5V_EN, enable ? 1 : 0);
