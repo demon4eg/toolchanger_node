@@ -54,18 +54,31 @@ void ds18b20_task_run(void)
     }
 
     static bool first_run = true;
+    static uint32_t last_error_log = 0;
+    static int consecutive_errors = 0;
+    
     if (first_run) {
         ESP_LOGI(TAG, "First DS18B20 scan starting...");
         first_run = false;
     }
+    
+    uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
     
     // If device exists, just read temperature (no scan spam)
     if (ds18b20_device_num > 0) {
         esp_err_t err = ds18b20_trigger_temperature_conversion_for_all(bus);
         
         if (err != ESP_OK) {
-            // Device disconnected - only clear if detection is enabled
-            if (detection_enabled) {
+            consecutive_errors++;
+            
+            // Only log every 5 seconds to reduce spam
+            if ((now - last_error_log) > 5000) {
+                ESP_LOGW(TAG, "DS18B20 communication error (count=%d)", consecutive_errors);
+                last_error_log = now;
+            }
+            
+            // After 3 consecutive errors, consider tool disconnected
+            if (consecutive_errors >= 3 && detection_enabled) {
                 ESP_LOGW(TAG, "Tool disconnected, clearing...");
                 for (int i = 0; i < ds18b20_device_num; i++) {
                     ds18b20_del_device(ds18b20s[i]);
@@ -73,10 +86,12 @@ void ds18b20_task_run(void)
                 ds18b20_device_num = 0;
                 tool_address = 0;
                 current_temp = -273.0f;
-            } else {
-                ESP_LOGD(TAG, "Device read error but detection disabled - ignoring");
+                consecutive_errors = 0;
             }
         } else {
+            // Successful read, reset error counter
+            consecutive_errors = 0;
+            
             // Wait for conversion (750ms)
             vTaskDelay(pdMS_TO_TICKS(750));
             float temperature;
@@ -98,7 +113,6 @@ void ds18b20_task_run(void)
     }
     
     scan_in_progress = true;
-    
     ESP_LOGD(TAG, "Scanning for DS18B20...");
     
     onewire_device_iter_handle_t iter = NULL;
