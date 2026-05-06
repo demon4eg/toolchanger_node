@@ -133,28 +133,29 @@ void state_machine_init(void)
     hardware_set_5v(false);
     hardware_set_7v8(false);
     
-    // DISABLE DETECTION FIRST - before any scans
-    ds18b20_set_detection_enabled(false);
+    // TEMPORARILY ENABLE detection for boot scan
+    ds18b20_set_detection_enabled(true);
     
-    // Wait for DS18B20 bus to stabilize
-    ESP_LOGI(TAG, "Waiting for DS18B20 detection...");
-    vTaskDelay(pdMS_TO_TICKS(500));
-    
-    // Force multiple scans (detection is disabled, so no auto-detection)
-    for (int i = 0; i < 3; i++) {
+    // Perform initial tool scan
+    ESP_LOGI(TAG, "Performing initial tool scan...");
+    for (int i = 0; i < 5; i++) {
         ds18b20_task_run();
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
     
-    // Check if tool is present after scanning
+    // Check if tool is present
     if (ds18b20_is_present()) {
         uint16_t tool_id = ds18b20_get_id();
         ESP_LOGI(TAG, "Tool already present at boot! ID=%d - powering up", tool_id);
         hardware_set_7v8(true);
         enter_state(ATTACHED);
+        // Keep detection disabled after boot (tool is already attached)
+        ds18b20_set_detection_enabled(false);
     } else {
         ESP_LOGI(TAG, "No tool detected at boot");
         enter_state(IDLE);
+        // Disable detection after boot (no tool, wait for UNLOCK command)
+        ds18b20_set_detection_enabled(false);
     }
     
     ESP_LOGI(TAG, "State machine initialized");

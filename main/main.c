@@ -24,7 +24,7 @@ void app_main(void)
     //esp_log_level_set("1-wire", ESP_LOG_ERROR);      // Only errors from 1-wire
     esp_log_level_set("gpio", ESP_LOG_ERROR);
     esp_log_level_set("1-wire.device", ESP_LOG_ERROR);
-    esp_log_level_set("DS18B20", ESP_LOG_WARN);     // Only warnings and errors
+    esp_log_level_set("ds18b20", ESP_LOG_WARN);     // Only warnings and errors
     esp_log_level_set("STATE_MACHINE", ESP_LOG_INFO);  // Keep state machine info
     esp_log_level_set("HARDWARE", ESP_LOG_INFO);       // Keep hardware info
     ESP_LOGI(TAG, "Starting...");
