@@ -6,6 +6,7 @@
 
 #include <uros_network_interfaces.h>
 #include "ros_manager.h"
+#include "ds18b20_task.h"
 
 #define TAG "MAIN"
 
@@ -28,9 +29,19 @@ void app_main(void)
 
     // Start ROS manager (creates its own task)
     ros_manager_init();
+
+    ds18b20_task_start();
+    
     
     // Main loop - just keep alive
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+    ds18b20_task_run();
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    
+    if (ds18b20_is_present()) {
+        ESP_LOGI(TAG, "Tool ID: %02X, Temp: %.1f°C", 
+                ds18b20_get_id(), 
+                ds18b20_get_temp());
     }
+}
 }

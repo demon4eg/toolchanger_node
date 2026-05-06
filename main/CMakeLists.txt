@@ -2,10 +2,14 @@ idf_component_register(
     SRCS 
         main.c
         ros_manager.c
-    INCLUDE_DIRS "."
+        ds18b20_task.c
+    INCLUDE_DIRS 
+        "."
+        "hardware"
     REQUIRES 
         nvs_flash
         esp_wifi
         esp_event
+        onewire_bus
         micro_ros_espidf_component
 )
