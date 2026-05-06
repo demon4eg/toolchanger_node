@@ -1,47 +1,24 @@
-#include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-
 #include <uros_network_interfaces.h>
 #include "ros_manager.h"
-#include "ds18b20_task.h"
+#include "state_machine.h"
 
 #define TAG "MAIN"
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "=== ESP32-S3 Starting ===");
+    ESP_LOGI(TAG, "Starting...");
     
-    // Initialize NVS (required for WiFi)
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
+    nvs_flash_init();
+    uros_network_interface_initialize();
     
-    // Initialize network interface for micro-ROS
-#if defined(CONFIG_MICRO_ROS_ESP_NETIF_WLAN) || defined(CONFIG_MICRO_ROS_ESP_NETIF_ENET)
-    ESP_ERROR_CHECK(uros_network_interface_initialize());
-#endif
-
-    // Start ROS manager (creates its own task)
+    state_machine_init();
     ros_manager_init();
-
-    ds18b20_task_start();
     
+    xTaskCreate(state_machine_task, "state", 4096, NULL, 2, NULL);
     
-    // Main loop - just keep alive
-    while (1) {
-    ds18b20_task_run();
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    
-    if (ds18b20_is_present()) {
-        ESP_LOGI(TAG, "Tool ID: %02X, Temp: %.1f°C", 
-                ds18b20_get_id(), 
-                ds18b20_get_temp());
-    }
-}
+    while(1) vTaskDelay(pdMS_TO_TICKS(1000));
 }

@@ -3,6 +3,8 @@ idf_component_register(
         main.c
         ros_manager.c
         ds18b20_task.c
+        state_machine.c
+        hardware.c
     INCLUDE_DIRS 
         "."
         "hardware"

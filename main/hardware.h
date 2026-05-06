@@ -1,14 +1,12 @@
 #ifndef HARDWARE_H
 #define HARDWARE_H
 
-#include <stdint.h>
 #include <stdbool.h>
 
 void hardware_init(void);
-void hardware_update(void);  // Call this periodically
-
-uint8_t hardware_get_tool_id(void);
-float hardware_get_temperature(void);
-bool hardware_is_tool_present(void);
+void hardware_set_5v(bool enable);
+void hardware_set_7v8(bool enable);
+void hardware_servo_lock(void);
+void hardware_servo_unlock(void);
 
 #endif

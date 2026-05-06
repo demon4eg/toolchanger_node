@@ -7,7 +7,7 @@
 void ds18b20_task_start(void);
 void ds18b20_task_run(void);
 bool ds18b20_is_present(void);
-uint8_t ds18b20_get_id(void);
+uint16_t ds18b20_get_id(void);
 float ds18b20_get_temp(void);
 
 #endif
