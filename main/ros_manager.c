@@ -13,6 +13,7 @@
 #include <std_msgs/msg/int32.h>
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
+#include <manipulator_6dof_interfaces/msg/tool_changer.h>
 
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
 #include <rmw_microros/rmw_microros.h>
