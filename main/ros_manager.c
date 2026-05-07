@@ -262,7 +262,6 @@ void ros_manager_init(void)
 {
 
     tool_manager_init();     // Initialize tool manager
-    tool_gripper_init(); 
 
     xTaskCreate(micro_ros_task, "uros_task", CONFIG_MICRO_ROS_APP_STACK, NULL, 
                 CONFIG_MICRO_ROS_APP_TASK_PRIO, NULL);

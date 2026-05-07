@@ -208,12 +208,13 @@ void tool_gripper_init(void)
     // Start regulation task
     xTaskCreate(gripper_regulation_task, "gripper_reg", 2048, NULL, 10, NULL);
     
-    // Register with tool manager
+    // Register with tool manager - specify tool type
     static tool_registration_t gripper_tool = {
-        .command_min = 0,
-        .command_max = 300,
+        .type = TOOL_TYPE_GRIPPER, 
         .handler = tool_gripper_process_command,
-        .name = "gripper"
+        .name = "gripper",
+        .cmd_min = 0,
+        .cmd_max = 300
     };
     
     tool_manager_register_tool(&gripper_tool);
