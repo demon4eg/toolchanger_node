@@ -3,11 +3,14 @@ idf_component_register(
         main.c
         ros_manager.c
         hardware/ds18b20_task.c
+        hardware/tool_manager.c
+        tools/tool_gripper.c
         state_machine.c
         hardware.c
     INCLUDE_DIRS 
         "."
         "hardware"
+        "tools"
     REQUIRES 
         nvs_flash
         esp_wifi

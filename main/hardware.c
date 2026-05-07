@@ -3,12 +3,66 @@
 #include "driver/ledc.h"
 #include "esp_log.h"
 
+
+
 #define TAG "HARDWARE"
 #define PIN_5V_EN   11
 #define PIN_7V8_EN  12
 #define PIN_SERVO   7
 #define SERVO_LOCK  2000
 #define SERVO_UNLOCK 1000
+
+// Store PWM channel configurations
+typedef struct {
+    ledc_channel_t channel;
+    ledc_mode_t speed_mode;
+} pwm_channel_t;
+
+static pwm_channel_t pwm_channels[LEDC_CHANNEL_MAX];
+
+void hardware_pwm_init(int gpio, int timer_num, int channel_num, int freq_hz, int resolution_bits)
+{
+    ledc_timer_t timer = (ledc_timer_t)timer_num;
+    ledc_channel_t channel = (ledc_channel_t)channel_num;
+    ledc_mode_t mode = LEDC_LOW_SPEED_MODE;
+    
+    // Configure timer
+    ledc_timer_config_t timer_conf = {
+        .speed_mode = mode,
+        .timer_num = timer,
+        .duty_resolution = resolution_bits,
+        .freq_hz = freq_hz,
+        .clk_cfg = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&timer_conf);
+    
+    // Configure channel
+    ledc_channel_config_t channel_conf = {
+        .gpio_num = gpio,
+        .speed_mode = mode,
+        .channel = channel,
+        .timer_sel = timer,
+        .duty = 0,
+        .hpoint = 0
+    };
+    ledc_channel_config(&channel_conf);
+    
+    // Store for later use
+    pwm_channels[channel_num].channel = channel;
+    pwm_channels[channel_num].speed_mode = mode;
+    
+    ESP_LOGI(TAG, "PWM initialized on GPIO%d (timer=%d, channel=%d, freq=%dHz)", 
+             gpio, timer_num, channel_num, freq_hz);
+}
+
+void hardware_pwm_set_duty(int channel_num, uint32_t duty)
+{
+    ledc_channel_t channel = (ledc_channel_t)channel_num;
+    ledc_mode_t mode = pwm_channels[channel_num].speed_mode;
+    
+    ledc_set_duty(mode, channel, duty);
+    ledc_update_duty(mode, channel);
+}
 
 void hardware_init(void)
 {

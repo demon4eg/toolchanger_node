@@ -17,6 +17,8 @@
 #include "ds18b20_task.h"
 #include "ros_manager.h"
 #include "freertos/portmacro.h"
+#include "tool_manager.h"
+#include "tool_gripper.h"
 
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
 #include <rmw_microros/rmw_microros.h>
@@ -73,6 +75,20 @@ static void command_callback(const void *msgin)
     
     ESP_LOGI(TAG, "Raw cmd: %d, Raw ID: %d (0x%X)", 
              ros_last_command, ros_last_tool_id, ros_last_tool_id);
+    
+    // ONLY route tool changer commands (0-3) to state machine
+    if (msg->command <= 3) {
+        // ros_command_received is already set, state machine will process
+        ESP_LOGI(TAG, "Tool changer command: %d", msg->command);
+    }
+    // Route tool commands (4+) to tool manager
+    else if (msg->command >= 4) {
+        tool_manager_process_command(msg->command, msg->tool_id);
+        // Clear the flag so state machine doesn't process it
+        portENTER_CRITICAL(&ros_spinlock);
+        ros_command_received = false;
+        portEXIT_CRITICAL(&ros_spinlock);
+    }
 }
 
 void ros_publish_status(uint8_t command, uint16_t tool_id, uint8_t state, uint8_t error_code, float temperature)
@@ -244,6 +260,10 @@ static void micro_ros_task(void *arg)
 
 void ros_manager_init(void)
 {
+
+    tool_manager_init();     // Initialize tool manager
+    tool_gripper_init(); 
+
     xTaskCreate(micro_ros_task, "uros_task", CONFIG_MICRO_ROS_APP_STACK, NULL, 
                 CONFIG_MICRO_ROS_APP_TASK_PRIO, NULL);
 }
