@@ -7,7 +7,8 @@ idf_component_register(
         hardware/led_status.c
         tools/tool_gripper.c
         state_machine.c
-        hardware.c
+        hardware/hardware.c
+        hardware/ina3221_monitor.c
     INCLUDE_DIRS 
         "."
         "hardware"
