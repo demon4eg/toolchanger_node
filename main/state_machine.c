@@ -2,6 +2,7 @@
 #include "ros_manager.h"
 #include "hardware.h"
 #include "tool_manager.h"
+#include "led_status.h"
 #include "ds18b20_task.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -60,6 +61,22 @@ static void enter_state(state_t new_state)
 {
     ESP_LOGI(TAG, "%s → %s", state_names[current_state], state_names[new_state]);
     current_state = new_state;
+    
+    // Update LED for new state
+    switch(new_state) {
+        case IDLE:
+            led_status_green(LED_PATTERN_SOLID);
+            break;
+        case ATTACHED:
+            led_status_green(LED_PATTERN_FAST_BLINK);
+            break;
+        case UNLOCKING:
+            led_status_yellow(LED_PATTERN_SOLID);
+            break;
+        default:
+            led_status_red(LED_PATTERN_SOLID);
+            break;
+    }
     
     if (new_state == IDLE) {
         warning_published = false;
@@ -154,6 +171,7 @@ void state_machine_init(void)
         uint16_t tool_id = ds18b20_get_id();
         ESP_LOGI(TAG, "Tool already present at boot! ID=%d - powering up", tool_id);
         cached_tool_id = tool_id;
+        led_status_green(LED_PATTERN_FAST_BLINK);  // ATTACHED
         tool_manager_set_current_tool(cached_tool_id);
         // Initialize tool based on lookup table
         tool_type_t type = tool_manager_get_tool_type_from_id(tool_id);
@@ -169,6 +187,7 @@ void state_machine_init(void)
     } else {
         ESP_LOGI(TAG, "No tool detected at boot");
         enter_state(IDLE);
+         led_status_green(LED_PATTERN_SOLID);  // IDLE
         // Disable detection after boot (no tool, wait for UNLOCK command)
         ds18b20_set_detection_enabled(false);
     }
@@ -338,6 +357,10 @@ void state_machine_task(void *arg)
         }
         
         publish_current_status();
+        // Update LED based on current state and ROS connection
+        // For now, just use state (we'll add ros_connected later)
+        bool ros_connected = ros_manager_is_connected();  // Placeholder - you can get from ros_manager
+        led_status_update_from_state(current_state, ros_connected, false);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

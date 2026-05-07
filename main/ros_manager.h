@@ -14,5 +14,6 @@ void ros_publish_status(uint8_t command, uint16_t tool_id, uint8_t state, uint8_
 
 // Initialize ROS (creates tasks)
 void ros_manager_init(void);
+bool ros_manager_is_connected(void);
 
 #endif

@@ -36,6 +36,7 @@ portMUX_TYPE ros_spinlock = portMUX_INITIALIZER_UNLOCKED;
 uint8_t ros_last_command = 0;
 uint16_t ros_last_tool_id = 0;
 bool ros_command_received = false;
+static bool microros_connected = false;
 
 static rcl_publisher_t heartbeat_pub;
 static rcl_publisher_t status_pub;
@@ -224,6 +225,7 @@ static void micro_ros_task(void *arg)
         if (init_micro_ros(&support, &node, &heartbeat_pub, &status_pub, 
                            &cmd_sub, &executor, &allocator)) {
             ESP_LOGI(TAG, "micro-ROS initialized successfully");
+            microros_connected = true;
             
             // Create heartbeat task (only once per successful connection)
             static bool heartbeat_task_created = false;
@@ -251,11 +253,17 @@ static void micro_ros_task(void *arg)
             rcl_publisher_fini(&heartbeat_pub, &node);
             rcl_node_fini(&node);
             rclc_support_fini(&support);
+            microros_connected = false;
         }
         
         ESP_LOGW(TAG, "micro-ROS init failed, retrying in 2 seconds...");
         vTaskDelay(pdMS_TO_TICKS(2000));
     }
+}
+
+bool ros_manager_is_connected(void)
+{
+    return microros_connected;
 }
 
 void ros_manager_init(void)

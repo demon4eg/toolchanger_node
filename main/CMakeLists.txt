@@ -4,6 +4,7 @@ idf_component_register(
         ros_manager.c
         hardware/ds18b20_task.c
         hardware/tool_manager.c
+        hardware/led_status.c
         tools/tool_gripper.c
         state_machine.c
         hardware.c

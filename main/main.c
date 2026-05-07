@@ -7,6 +7,7 @@
 #include "ros_manager.h"
 #include "state_machine.h"
 #include "hardware.h"
+#include "led_status.h"
 
 #define TAG "MAIN"
 
@@ -20,12 +21,13 @@ static void IRAM_ATTR button_isr(void *arg)
 
 void app_main(void)
 {
+    led_status_init();
     esp_log_level_set("gpio", ESP_LOG_ERROR);
     esp_log_level_set("1-wire.device", ESP_LOG_ERROR);
     esp_log_level_set("ds18b20", ESP_LOG_NONE);
     esp_log_level_set("STATE_MACHINE", ESP_LOG_INFO);
     esp_log_level_set("HARDWARE", ESP_LOG_INFO);
-    
+    esp_log_level_set("LED_STATUS", ESP_LOG_INFO);
     ESP_LOGI(TAG, "Starting...");
     
     nvs_flash_init();
@@ -33,6 +35,8 @@ void app_main(void)
     
     ros_manager_init();
     state_machine_init();
+    
+    
     
     
     // Configure button
