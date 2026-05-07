@@ -44,17 +44,7 @@ typedef struct {
 // Tool command callback
 typedef void (*tool_command_handler_t)(uint8_t command, uint16_t tool_id, uint16_t param);
 
-// Registration structure
-typedef struct {
-    tool_type_t type;
-    tool_command_handler_t handler;
-    const char* name;
-    uint16_t cmd_min;
-    uint16_t cmd_max;
-} tool_registration_t;
-
 void tool_manager_init(void);
-void tool_manager_register_tool(tool_registration_t* tool);
 void tool_manager_process_command(uint8_t command, uint16_t tool_id);
 tool_type_t tool_manager_get_current_tool_type(void);
 uint16_t tool_manager_get_current_tool_id(void);

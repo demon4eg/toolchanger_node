@@ -211,15 +211,6 @@ void tool_gripper_init(void)
     // Start regulation task
     xTaskCreate(gripper_regulation_task, "gripper_reg", 4096, NULL, 10, NULL);
     
-    // Register with tool manager
-    static tool_registration_t gripper_tool = {
-        .type = TOOL_TYPE_GRIPPER, 
-        .handler = tool_gripper_process_command,
-        .name = "gripper",
-        .cmd_min = TOOL_CMD_GRIPPER_POS_MIN,
-        .cmd_max = TOOL_CMD_GRIPPER_EFFORT_MAX
-    };
-    
-    tool_manager_register_tool(&gripper_tool);
+
     ESP_LOGI(TAG, "Gripper tool initialized with INA3221 effort control");
 }
