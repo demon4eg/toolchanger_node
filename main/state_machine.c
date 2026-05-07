@@ -31,6 +31,7 @@ static uint32_t unlock_start_time = 0;
 static bool waiting_for_tool = false;      // Flag for waiting during attach/release
 static bool waiting_for_insertion = true;  // true=waiting to insert, false=waiting to remove
 static bool warning_published = false;
+static uint16_t cached_tool_id = 0;
 
 // External variables from ros_manager.c
 extern uint8_t ros_last_command;
@@ -73,8 +74,9 @@ static void publish_warning(const char* warning)
 
 static void publish_current_status(void)
 {
-    uint16_t tool_id = ds18b20_is_present() ? ds18b20_get_id() : 0;
-    float temp = ds18b20_is_present() ? ds18b20_get_temp() : -273.0f;
+    uint16_t tool_id = cached_tool_id;
+    float temp = (cached_tool_id != 0) ? ds18b20_get_temp() : -273.0f;
+    
     uint8_t state_code = 0, error_code = 0;
     
     switch(current_state) {
@@ -88,9 +90,11 @@ static void publish_current_status(void)
         error_code = 4;
     }
     
+    // ESP_LOGI(TAG, "PUBLISHING: tool_id=%d, state=%d, error=%d, temp=%.2f", 
+    //          tool_id, state_code, error_code, temp);
+    
     ros_publish_status(tool_id, state_code, error_code, temp);
 }
-
 void state_machine_button_unlock(void)
 {
     if (current_state == IDLE && !waiting_for_tool) {
@@ -149,6 +153,7 @@ void state_machine_init(void)
     if (ds18b20_is_present()) {
         uint16_t tool_id = ds18b20_get_id();
         ESP_LOGI(TAG, "Tool already present at boot! ID=%d - powering up", tool_id);
+        cached_tool_id = tool_id;
         hardware_set_7v8(true);
         enter_state(ATTACHED);
         // Keep detection disabled after boot (tool is already attached)
@@ -258,6 +263,7 @@ void state_machine_task(void *arg)
             if (waiting_for_insertion && tool_present) {
                 // Tool INSERTED - lock it
                 ESP_LOGI(TAG, "Tool inserted → Locking");
+                cached_tool_id = ds18b20_get_id();
                 hardware_set_5v(true);
                 set_servo_locked(true);
                 hardware_set_7v8(true);
@@ -269,6 +275,7 @@ void state_machine_task(void *arg)
             else if (!waiting_for_insertion && !tool_present) {
                 // Tool REMOVED - go to IDLE
                 ESP_LOGI(TAG, "Tool removed → IDLE");
+                cached_tool_id = 0;
                 set_servo_locked(true);
                 hardware_set_5v(false);
                 hardware_set_7v8(false);
@@ -303,6 +310,7 @@ void state_machine_task(void *arg)
         // Check for unexpected tool disappearance in ATTACHED
         if (current_state == ATTACHED && !tool_present && !waiting_for_tool) {
             ESP_LOGE(TAG, "Unexpected: Tool disappeared while ATTACHED");
+            cached_tool_id = 0;
             hardware_set_5v(false);
             hardware_set_7v8(false);
             set_servo_locked(true);

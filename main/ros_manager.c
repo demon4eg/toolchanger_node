@@ -84,7 +84,13 @@ void ros_publish_status(uint16_t tool_id, uint8_t state, uint8_t error_code, flo
     msg.state = state;
     msg.error_code = error_code;
     msg.temperature = temperature;
-    rcl_publish(&status_pub, &msg, NULL);
+    
+    rcl_ret_t ret = rcl_publish(&status_pub, &msg, NULL);
+    // if (ret != RCL_RET_OK) {
+    //     ESP_LOGE(TAG, "rcl_publish failed: %ld", (long)ret);
+    // } else {
+    //     ESP_LOGI(TAG, "rcl_publish SUCCESS");
+    // }
 }
 
 static bool init_micro_ros(rclc_support_t *support, rcl_node_t *node, 
@@ -193,8 +199,6 @@ static void micro_ros_task(void *arg)
     rcl_allocator_t allocator = rcl_get_default_allocator();
     rclc_support_t support;
     rcl_node_t node;
-    rcl_publisher_t heartbeat_pub;
-    rcl_publisher_t status_pub;
     rcl_subscription_t cmd_sub;
     rclc_executor_t executor;
     
