@@ -155,24 +155,20 @@ void tool_gripper_process_command(uint8_t command, uint16_t tool_id, uint16_t pa
 {
     ESP_LOGI(TAG, "Gripper command: %d, tool_id: %d", command, tool_id);
     
-    // Direct angle commands (0-180) - convert to position
-    if (command >= GRIPPER_CMD_ANGLE_MIN && command <= GRIPPER_CMD_ANGLE_MAX) {
-        int32_t pos = angle_to_position(command);
+    // Position control - use defines from tool_manager.h
+    if (command >= TOOL_CMD_GRIPPER_POS_MIN && command <= TOOL_CMD_GRIPPER_POS_MAX) {
+        // Map to 0-20000 microns
+        float percent = (float)(command - TOOL_CMD_GRIPPER_POS_MIN) / 
+                        (TOOL_CMD_GRIPPER_POS_MAX - TOOL_CMD_GRIPPER_POS_MIN);
+        int32_t pos = percent * GRIPPER_POS_MAX;
         gripper_set_target_position(pos);
     }
     
-    // Shortcut commands
-    else if (command == GRIPPER_CMD_OPEN) {
-        gripper_set_target_position(GRIPPER_POS_MAX);  // Fully open
-    }
-    else if (command == GRIPPER_CMD_CLOSE) {
-        gripper_set_target_position(GRIPPER_POS_MIN);  // Fully closed
-    }
-    
-    // Effort control (200-300 maps to 0-1200 mA)
-    else if (command >= GRIPPER_CMD_EFFORT_MIN && command <= GRIPPER_CMD_EFFORT_MAX) {
-        uint8_t percent = command - GRIPPER_CMD_EFFORT_MIN + 1;
-        int32_t effort_ma = (percent * 1200) / 100;  // 1-100% → 0-1200mA
+    // Effort control - use defines from tool_manager.h
+    else if (command >= TOOL_CMD_GRIPPER_EFFORT_MIN && command <= TOOL_CMD_GRIPPER_EFFORT_MAX) {
+        float percent = (float)(command - TOOL_CMD_GRIPPER_EFFORT_MIN) / 
+                        (TOOL_CMD_GRIPPER_EFFORT_MAX - TOOL_CMD_GRIPPER_EFFORT_MIN);
+        int32_t effort_ma = percent * 1200;
         gripper_set_target_effort(effort_ma);
     }
     
@@ -213,8 +209,8 @@ void tool_gripper_init(void)
         .type = TOOL_TYPE_GRIPPER, 
         .handler = tool_gripper_process_command,
         .name = "gripper",
-        .cmd_min = 0,
-        .cmd_max = 300
+        .cmd_min = TOOL_CMD_GRIPPER_POS_MIN,      // 5
+        .cmd_max = TOOL_CMD_GRIPPER_EFFORT_MAX    // 36
     };
     
     tool_manager_register_tool(&gripper_tool);

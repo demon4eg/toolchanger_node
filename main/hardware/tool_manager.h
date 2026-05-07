@@ -3,6 +3,25 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Tool command ranges (global)
+#define TOOL_CMD_GRIPPER_POS_MIN     5
+#define TOOL_CMD_GRIPPER_POS_MAX     25
+#define TOOL_CMD_GRIPPER_EFFORT_MIN  26
+#define TOOL_CMD_GRIPPER_EFFORT_MAX  36
+
+#define TOOL_CMD_DISPENSER_SPEED_MIN 37
+#define TOOL_CMD_DISPENSER_SPEED_MAX 42
+#define TOOL_CMD_DISPENSER_VOL_MIN   43
+#define TOOL_CMD_DISPENSER_VOL_MAX   52
+
+#define TOOL_CMD_VACUUM_ONOFF        60
+#define TOOL_CMD_VACUUM_STR_MIN      62
+#define TOOL_CMD_VACUUM_STR_MAX      71
+
+#define TOOL_CMD_RESERVED_MIN        80
+#define TOOL_CMD_RESERVED_MAX        99
+
+
 // Tool types
 typedef enum {
     TOOL_TYPE_NONE = 0,
