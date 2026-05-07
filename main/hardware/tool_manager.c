@@ -101,10 +101,11 @@ uint16_t tool_manager_get_current_tool_id(void)
 
 void tool_manager_process_command(uint8_t command, uint16_t tool_id)
 {
-    // If tool_id doesn't match current tool, reject
-    if (tool_id != 0 && tool_id != current_tool_id) {
-        ESP_LOGW(TAG, "Command for wrong tool: cmd=%d, expected ID=%u, got ID=%u", 
-                 command, current_tool_id, tool_id);
+    (void)tool_id;  // Ignore incoming tool_id - always use current tool
+    
+    // If no tool attached, reject all commands
+    if (current_tool_type == TOOL_TYPE_NONE) {
+        ESP_LOGW(TAG, "No tool attached, ignoring command %d", command);
         return;
     }
     

@@ -31,8 +31,9 @@ void app_main(void)
     nvs_flash_init();
     uros_network_interface_initialize();
     
-    state_machine_init();
     ros_manager_init();
+    state_machine_init();
+    
     
     // Configure button
     hardware_button_init();

@@ -154,6 +154,7 @@ void state_machine_init(void)
         uint16_t tool_id = ds18b20_get_id();
         ESP_LOGI(TAG, "Tool already present at boot! ID=%d - powering up", tool_id);
         cached_tool_id = tool_id;
+        tool_manager_set_current_tool(cached_tool_id);
         // Initialize tool based on lookup table
         tool_type_t type = tool_manager_get_tool_type_from_id(tool_id);
         if (type == TOOL_TYPE_GRIPPER) {
@@ -273,6 +274,7 @@ void state_machine_task(void *arg)
                 // Tool INSERTED - lock it
                 ESP_LOGI(TAG, "Tool inserted → Locking");
                 cached_tool_id = ds18b20_get_id();
+                tool_manager_set_current_tool(cached_tool_id);
                 // Initialize tool based on lookup table
                 tool_type_t type = tool_manager_get_tool_type_from_id(cached_tool_id);
                 if (type == TOOL_TYPE_GRIPPER) {
@@ -292,7 +294,7 @@ void state_machine_task(void *arg)
                 // Tool REMOVED - go to IDLE
                 ESP_LOGI(TAG, "Tool removed → IDLE");
                 cached_tool_id = 0;
-                //tool_manager_set_current_tool(0); // notify tool manager no tool
+                tool_manager_set_current_tool(0); // notify tool manager no tool
                 set_servo_locked(true);
                 hardware_set_5v(false);
                 hardware_set_7v8(false);
