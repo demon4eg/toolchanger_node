@@ -32,6 +32,8 @@
 
 #define EFFORT_DEADBAND_MA   20  // 20mA deadband to prevent hunting
 #define BACKOFF_STEP            300   // 0.8mm - enough to release stall
+#define POSITION_HYSTERESIS     200     // 0.2mm - don't react to small position changes
+#define EFFORT_HYSTERESIS       50      // 30mA - prevent hunting
 
 #define constrain(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 
@@ -41,7 +43,6 @@ static int32_t target_effort_ma = 300;             // Default 300mA
 static int32_t current_effort_ma = 0;
 static float filtered_effort = 0;
 static float alpha = 0.13f;  // EMA filter
-
 
 // Convert position (microns) to PWM duty
 static uint32_t pos_to_duty(int32_t pos)
@@ -89,8 +90,9 @@ static void read_current(void)
     }
 }
 
-// PID regulation (mirroring STM32 logic)
+// PID regulation 
 static uint32_t last_backoff_time = 0;
+static int32_t stable_position = -1;
 
 static void gripper_regulate(void)
 {
@@ -98,32 +100,45 @@ static void gripper_regulate(void)
     
     int32_t posDiff = target_pos - current_pos;
     int32_t effortGap = target_effort_ma - current_effort_ma;
-    float Kp_effort = 1.0f;
     
-    // 1. OPENING - full speed
+    // Apply position hysteresis - ignore tiny movements
+    if (abs(posDiff) < POSITION_HYSTERESIS && posDiff != 0) {
+        // Position is close enough, consider it reached
+        current_pos = target_pos;
+        gripper_set_position(current_pos);
+        return;
+    }
+    
+    // OVERLOAD: Current exceeds target - back off
+    if (effortGap < -EFFORT_HYSTERESIS && current_pos > GRIPPER_POS_MIN) {
+        uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        if ((now - last_backoff_time) > 200) {
+            current_pos += BACKOFF_STEP;
+            if (current_pos > GRIPPER_POS_MAX) current_pos = GRIPPER_POS_MAX;
+            gripper_set_position(current_pos);
+            last_backoff_time = now;
+        }
+        return;
+    }
+    
+    // OPENING - full speed
     if (posDiff > 0) {
         current_pos = target_pos;
         gripper_set_position(current_pos);
     }
-    // 2. CLOSING
-    else if (posDiff < 0) {
-        if (effortGap > 80) {
-            int32_t dynamicStep = (int32_t)(effortGap * Kp_effort);
-            dynamicStep = constrain(dynamicStep, 10, 100);
-            
-            if (abs(posDiff) > dynamicStep) {
-                current_pos -= dynamicStep;
-            } else {
-                current_pos = target_pos;
-            }
+    // CLOSING - dynamic effort control
+    else if (posDiff < 0 && effortGap > EFFORT_HYSTERESIS) {
+        int32_t dynamicStep = (int32_t)(effortGap * KP_EFFORT);
+        dynamicStep = constrain(dynamicStep, MIN_STEP_PER_CYCLE, MAX_STEP_PER_CYCLE);
+        
+        if (abs(posDiff) > dynamicStep) {
+            current_pos -= dynamicStep;
         } else {
-            // OVERLOAD - back off
-            current_pos += 50;
+            current_pos = target_pos;
         }
+        current_pos = constrain(current_pos, GRIPPER_POS_MIN, GRIPPER_POS_MAX);
+        gripper_set_position(current_pos);
     }
-    
-    current_pos = constrain(current_pos, GRIPPER_POS_MIN, GRIPPER_POS_MAX);
-    gripper_set_position(current_pos);
 }
 
 // Public: Set target position (microns)
