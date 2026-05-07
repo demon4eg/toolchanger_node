@@ -20,6 +20,7 @@
 
 // Timeouts
 #define UNLOCK_TIMEOUT_MS  7000U  // 5 seconds
+#define TOOLCHANGER_SERVO_DELAY_MS  500U  // 300 ms
 
 // States
 typedef enum {
@@ -303,6 +304,7 @@ void state_machine_task(void *arg)
                 // Add other tool types here as needed
                 hardware_set_5v(true);
                 set_servo_locked(true);
+                vTaskDelay(pdMS_TO_TICKS(TOOLCHANGER_SERVO_DELAY_MS));  // Wait for servo to reach position
                 hardware_set_7v8(true);
                 hardware_set_5v(false);
                 waiting_for_tool = false;
@@ -315,6 +317,7 @@ void state_machine_task(void *arg)
                 cached_tool_id = 0;
                 tool_manager_set_current_tool(0); // notify tool manager no tool
                 set_servo_locked(true);
+                vTaskDelay(pdMS_TO_TICKS(TOOLCHANGER_SERVO_DELAY_MS));  // Wait for servo to reach position
                 hardware_set_5v(false);
                 hardware_set_7v8(false);
                 waiting_for_tool = false;
@@ -332,6 +335,7 @@ void state_machine_task(void *arg)
                 }
                 hardware_set_5v(true);
                 set_servo_locked(true);
+                vTaskDelay(pdMS_TO_TICKS(TOOLCHANGER_SERVO_DELAY_MS));  // Wait for servo to reach position
                 hardware_set_5v(false);
                 if (waiting_for_insertion) {
                     hardware_set_7v8(false);

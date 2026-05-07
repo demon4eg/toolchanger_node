@@ -9,8 +9,8 @@
 #define PIN_5V_EN   11
 #define PIN_7V8_EN  12
 #define PIN_SERVO   7
-#define SERVO_LOCK  2000
-#define SERVO_UNLOCK 1000
+#define SERVO_LOCK  1000
+#define SERVO_UNLOCK 2000
 
 // Store PWM channel configurations
 typedef struct {

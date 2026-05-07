@@ -205,10 +205,6 @@ void tool_gripper_init(void)
     hardware_pwm_init(GRIPPER_PWM_GPIO, GRIPPER_PWM_TIMER, GRIPPER_PWM_CHANNEL, 
                       GRIPPER_PWM_FREQ, GRIPPER_PWM_RESOLUTION);
     
-    // Initialize INA3221 and set EMA filter coefficient (same as STM32: 0.13)
-    ina3221_monitor_init();
-    //ina3221_set_alpha(alpha);  // Use same alpha (0.13f)
-    
     // Set default position (open)
     gripper_set_position(GRIPPER_POS_MAX);
     

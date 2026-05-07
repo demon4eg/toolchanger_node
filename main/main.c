@@ -8,6 +8,7 @@
 #include "state_machine.h"
 #include "hardware.h"
 #include "led_status.h"
+#include "ina3221_monitor.h"
 
 #define TAG "MAIN"
 
@@ -32,7 +33,7 @@ void app_main(void)
     
     nvs_flash_init();
     uros_network_interface_initialize();
-    
+    ina3221_monitor_init();
     ros_manager_init();
     state_machine_init();
     
