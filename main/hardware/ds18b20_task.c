@@ -72,7 +72,7 @@ void ds18b20_task_run(void)
             consecutive_errors++;
             
             // Only log every 5 seconds to reduce spam
-            if ((now - last_error_log) > 5000) {
+            if ((now - last_error_log) > 2000) {
                 ESP_LOGW(TAG, "DS18B20 communication error (count=%d)", consecutive_errors);
                 last_error_log = now;
             }

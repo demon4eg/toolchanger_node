@@ -18,3 +18,6 @@ void ina3221_monitor_init(void);
 float ina3221_get_current_ma(uint8_t channel);
 float ina3221_get_voltage_mv(uint8_t channel);
 bool ina3221_is_overcurrent(uint8_t channel);
+void ina3221_update_filtered_current(void);  // Call in regulation task
+float ina3221_get_filtered_current_ma(uint8_t channel);
+void ina3221_set_alpha(float alpha);  // EMA filter coefficient (0.13 = 13%)

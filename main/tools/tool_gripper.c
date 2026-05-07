@@ -4,16 +4,10 @@
 #include "esp_log.h"
 #include "driver/ledc.h"
 #include "driver/i2c.h"  // For INA3221
+#include "ina3221_monitor.h"
 
 #define TAG "TOOL_GRIPPER"
 
-// Command ranges
-#define GRIPPER_CMD_ANGLE_MIN   0
-#define GRIPPER_CMD_ANGLE_MAX   180
-#define GRIPPER_CMD_OPEN        4
-#define GRIPPER_CMD_CLOSE       5
-#define GRIPPER_CMD_EFFORT_MIN  200
-#define GRIPPER_CMD_EFFORT_MAX  300
 
 // Hardware
 #define GRIPPER_PWM_GPIO        5
@@ -31,16 +25,14 @@
 #define GRIPPER_POS_MAX         20000   // 20mm - open
 
 // PID constants for effort control (tune these)
-#define KP_EFFORT               1.5f
+#define KP_EFFORT               1.0f
 #define IDLE_CURRENT_MA         110     // No-load current threshold
-#define MAX_STEP_PER_CYCLE      400     // Max position change per 10ms
-#define MIN_STEP_PER_CYCLE      10      // Min step for "squeeze"
+#define MAX_STEP_PER_CYCLE      100     // Max position change per 10ms
+#define MIN_STEP_PER_CYCLE      50      // Min step for "squeeze"
 
-// INA3221 configuration
-#define INA3221_ADDR            0x40
-#define I2C_MASTER_SCL_IO       1
-#define I2C_MASTER_SDA_IO       2
-#define I2C_MASTER_FREQ_HZ      100000
+#define EFFORT_DEADBAND_MA   20  // 20mA deadband to prevent hunting
+#define BACKOFF_STEP            300   // 0.8mm - enough to release stall
+#define EFFORT_HYSTERESIS   50 
 
 #define constrain(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 
@@ -50,6 +42,7 @@ static int32_t target_effort_ma = 300;             // Default 300mA
 static int32_t current_effort_ma = 0;
 static float filtered_effort = 0;
 static float alpha = 0.13f;  // EMA filter
+
 
 // Convert position (microns) to PWM duty
 static uint32_t pos_to_duty(int32_t pos)
@@ -78,57 +71,66 @@ static void gripper_set_position(int32_t pos)
     ESP_LOGD(TAG, "Position: %d microns, duty: %lu", (int)pos, duty);
 }
 
-// Read current from INA3221
+// Read filtered current from INA3221 (matches STM32 EMA filter)
 static void read_current(void)
 {
-    // TODO: Implement INA3221 read
-    // For now, simulate or return 0 if not yet implemented
-    // current_effort_ma = ina3221_read_current_ma(1);
+    // Get raw current from INA3221 (mA)
+    float raw_ma = ina3221_get_current_ma(INA3221_CH_7V8);
     
-    // Temporary: just use filtered value or 0
-    if (filtered_effort == 0) {
-        filtered_effort = IDLE_CURRENT_MA;
-    }
-    filtered_effort = (alpha * current_effort_ma) + ((1.0 - alpha) * filtered_effort);
+    // Apply EMA filter (same as STM32 - alpha 0.13)
+    filtered_effort = (alpha * raw_ma) + ((1.0f - alpha) * filtered_effort);
     current_effort_ma = (int32_t)filtered_effort;
+    
+    // Optional: periodic log (every 5 seconds)
+    static uint32_t last_log = 0;
+    uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    if ((now - last_log) > 2000) {
+        ESP_LOGI(TAG, "Current: %ld mA (raw: %.0f mA)", current_effort_ma, raw_ma);
+        last_log = now;
+    }
 }
 
 // PID regulation (mirroring STM32 logic)
+static uint32_t last_backoff_time = 0;
+
 static void gripper_regulate(void)
 {
     read_current();
     
-    int32_t pos_diff = target_pos - current_pos;
+    int32_t posDiff = target_pos - current_pos;
+    int32_t effortGap = target_effort_ma - current_effort_ma;
+    float Kp_effort = 1.5f;
     
-    // OPENING (moving toward MAX_POS) - full speed
-    if (pos_diff > 0) {
-        current_pos = target_pos;  // Instant move when opening
-        gripper_set_position(current_pos);
-    }
-    // CLOSING (moving toward MIN_POS) - effort controlled
-    else if (pos_diff < 0) {
-        int32_t effort_gap = target_effort_ma - current_effort_ma;
-        
-        if (effort_gap > 0) {
-            // Below target effort - can move closer
-            int32_t dynamic_step = (int32_t)(effort_gap * KP_EFFORT);
-            dynamic_step = constrain(dynamic_step, MIN_STEP_PER_CYCLE, MAX_STEP_PER_CYCLE);
-            
-            if (abs(pos_diff) > dynamic_step) {
-                current_pos -= dynamic_step;
-            } else {
-                current_pos = target_pos;
-            }
-        } else {
-            // OVERLOAD: Current exceeds target, back off slightly
-            current_pos += 50;
+    // OVERLOAD: Current exceeds target - back off (with cooldown)
+    if (effortGap < -EFFORT_HYSTERESIS && current_pos > GRIPPER_POS_MIN) {
+        uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        if ((now - last_backoff_time) > 200) {
+            current_pos += BACKOFF_STEP;
+            if (current_pos > GRIPPER_POS_MAX) current_pos = GRIPPER_POS_MAX;
+            gripper_set_position(current_pos);
+            last_backoff_time = now;
         }
-        
-        gripper_set_position(current_pos);
+        return;
     }
     
-    ESP_LOGD(TAG, "Regulate: pos=%d, target=%d, effort=%d/%d, diff=%d",
-             (int)current_pos, (int)target_pos, (int)current_effort_ma, (int)target_effort_ma, (int)pos_diff);
+    // OPENING - full speed
+    if (posDiff > 0) {
+        current_pos = target_pos;
+        gripper_set_position(current_pos);
+    }
+    // CLOSING - dynamic effort control
+    else if (posDiff < 0 && effortGap > 0) {
+        int32_t dynamicStep = (int32_t)(effortGap * Kp_effort);
+        dynamicStep = constrain(dynamicStep, 10, 400);
+        
+        if (abs(posDiff) > dynamicStep) {
+            current_pos -= dynamicStep;
+        } else {
+            current_pos = target_pos;
+        }
+        current_pos = constrain(current_pos, GRIPPER_POS_MIN, GRIPPER_POS_MAX);
+        gripper_set_position(current_pos);
+    }
 }
 
 // Public: Set target position (microns)
@@ -195,24 +197,25 @@ void tool_gripper_init(void)
     hardware_pwm_init(GRIPPER_PWM_GPIO, GRIPPER_PWM_TIMER, GRIPPER_PWM_CHANNEL, 
                       GRIPPER_PWM_FREQ, GRIPPER_PWM_RESOLUTION);
     
-    // Initialize INA3221 on I2C (GPIO1=SCL, GPIO2=SDA)
-    // TODO: Add INA3221 initialization
+    // Initialize INA3221 and set EMA filter coefficient (same as STM32: 0.13)
+    ina3221_monitor_init();
+    //ina3221_set_alpha(alpha);  // Use same alpha (0.13f)
     
     // Set default position (open)
     gripper_set_position(GRIPPER_POS_MAX);
     
     // Start regulation task
-    xTaskCreate(gripper_regulation_task, "gripper_reg", 2048, NULL, 10, NULL);
+    xTaskCreate(gripper_regulation_task, "gripper_reg", 4096, NULL, 10, NULL);
     
-    // Register with tool manager - specify tool type
+    // Register with tool manager
     static tool_registration_t gripper_tool = {
         .type = TOOL_TYPE_GRIPPER, 
         .handler = tool_gripper_process_command,
         .name = "gripper",
-        .cmd_min = TOOL_CMD_GRIPPER_POS_MIN,      // 5
-        .cmd_max = TOOL_CMD_GRIPPER_EFFORT_MAX    // 36
+        .cmd_min = TOOL_CMD_GRIPPER_POS_MIN,
+        .cmd_max = TOOL_CMD_GRIPPER_EFFORT_MAX
     };
     
     tool_manager_register_tool(&gripper_tool);
-    ESP_LOGI(TAG, "Gripper tool initialized");
+    ESP_LOGI(TAG, "Gripper tool initialized with INA3221 effort control");
 }

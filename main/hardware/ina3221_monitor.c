@@ -20,14 +20,38 @@
 #define SHUNT_5V_MILLI_OHM      100 
 #define SHUNT_UNUSED_MILLI_OHM  100
 
-// Warning thresholds (Amps) - from your example
-#define WARNING_CURRENT_7V8_A   1.5f   // 2.5A
-#define WARNING_CURRENT_5V_A    0.8f   // 1.0A
-
 static ina3221_t dev;
 static bool initialized = false;
 static SemaphoreHandle_t i2c_mutex = NULL;
 static int error_count = 0;
+static float filtered_current_7v8 = 0;
+static float filtered_current_5v = 0;
+static float alpha = 0.13f;  // EMA coefficient (matches your STM32)
+
+void ina3221_set_alpha(float new_alpha)
+{
+    alpha = new_alpha;
+}
+
+void ina3221_update_filtered_current(void)
+{
+    // This now returns mA, not Amps
+    float raw_current_ma = ina3221_get_current_ma(INA3221_CH_7V8);
+    
+    // Apply EMA filter
+    filtered_current_7v8 = (alpha * raw_current_ma) + ((1.0f - alpha) * filtered_current_7v8);
+    
+    ESP_LOGD(TAG, "Filtered current: %.0f mA (raw: %.0f mA)", filtered_current_7v8, raw_current_ma);
+}
+
+float ina3221_get_filtered_current_ma(uint8_t channel)
+{
+    if (channel == INA3221_CH_7V8) {
+        return filtered_current_7v8;  // Already in mA
+    } else {
+        return ina3221_get_current_ma(channel);  // Now returns mA
+    }
+}
 
 void ina3221_monitor_init(void)
 {
@@ -57,8 +81,8 @@ void ina3221_monitor_init(void)
     ESP_ERROR_CHECK(ina3221_set_shunt_conversion_time(&dev, INA3221_CT_2116));
     
     // Set warning thresholds (Amps)
-    ESP_ERROR_CHECK(ina3221_set_warning_alert(&dev, INA3221_CHANNEL_1, WARNING_CURRENT_7V8_A));
-    ESP_ERROR_CHECK(ina3221_set_warning_alert(&dev, INA3221_CHANNEL_2, WARNING_CURRENT_5V_A));
+    ESP_ERROR_CHECK(ina3221_set_warning_alert(&dev, INA3221_CHANNEL_1, OVERCURRENT_7V8_MA * 1000));  // Convert A to mA
+    ESP_ERROR_CHECK(ina3221_set_warning_alert(&dev, INA3221_CHANNEL_2, OVERCURRENT_5V_MA * 1000));   // Convert A to mA
     
     i2c_mutex = xSemaphoreCreateMutex();
     initialized = true;
@@ -73,16 +97,15 @@ float ina3221_get_current_ma(uint8_t channel)
     float current_amps = 0.0f;
     int ch_index;
     
-    // Convert channel to INA3221 channel index
     if (channel == INA3221_CH_5V) {
-        ch_index = INA3221_CHANNEL_2;  // CH2 for 5V rail
+        ch_index = INA3221_CHANNEL_2;
     } else if (channel == INA3221_CH_7V8) {
-        ch_index = INA3221_CHANNEL_1;  // CH1 for 7.8V rail
+        ch_index = INA3221_CHANNEL_1;
     } else {
         return 0.0f;
     }
     
-    if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+    if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
         float shunt_voltage_mv, current_amps;
         esp_err_t ret = ina3221_get_shunt_value(&dev, ch_index, &shunt_voltage_mv, &current_amps);
         xSemaphoreGive(i2c_mutex);

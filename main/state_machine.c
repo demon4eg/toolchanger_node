@@ -19,7 +19,7 @@
 #define CMD_7V8_OFF     3
 
 // Timeouts
-#define UNLOCK_TIMEOUT_MS  5000U  // 5 seconds
+#define UNLOCK_TIMEOUT_MS  7000U  // 5 seconds
 
 // States
 typedef enum {
