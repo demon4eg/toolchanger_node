@@ -27,6 +27,7 @@ typedef enum {
 } state_t;
 
 static state_t current_state = IDLE;
+static uint8_t last_processed_command = 0;
 static uint32_t unlock_start_time = 0;
 static bool waiting_for_tool = false;      // Flag for waiting during attach/release
 static bool waiting_for_insertion = true;  // true=waiting to insert, false=waiting to remove
@@ -90,11 +91,9 @@ static void publish_current_status(void)
         error_code = 4;
     }
     
-    // ESP_LOGI(TAG, "PUBLISHING: tool_id=%d, state=%d, error=%d, temp=%.2f", 
-    //          tool_id, state_code, error_code, temp);
-    
-    ros_publish_status(tool_id, state_code, error_code, temp);
+    ros_publish_status(last_processed_command, tool_id, state_code, error_code, temp);
 }
+
 void state_machine_button_unlock(void)
 {
     if (current_state == IDLE && !waiting_for_tool) {
@@ -191,6 +190,8 @@ void state_machine_task(void *arg)
             ros_command_received = false;
             portEXIT_CRITICAL(&ros_spinlock);
             
+            last_processed_command = cmd;
+
             switch(cmd) {
                 case CMD_UNLOCK:  // 0 - UNLOCK command
                     if (current_state == IDLE && !waiting_for_tool) {

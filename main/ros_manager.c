@@ -75,11 +75,11 @@ static void command_callback(const void *msgin)
              ros_last_command, ros_last_tool_id, ros_last_tool_id);
 }
 
-void ros_publish_status(uint16_t tool_id, uint8_t state, uint8_t error_code, float temperature)
+void ros_publish_status(uint8_t command, uint16_t tool_id, uint8_t state, uint8_t error_code, float temperature)
 {
     manipulator_6dof_interfaces__msg__ToolChanger msg;
     manipulator_6dof_interfaces__msg__ToolChanger__init(&msg);
-    msg.command = 2;
+    msg.command = command;
     msg.tool_id = tool_id;
     msg.state = state;
     msg.error_code = error_code;
