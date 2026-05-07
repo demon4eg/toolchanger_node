@@ -32,7 +32,6 @@
 
 #define EFFORT_DEADBAND_MA   20  // 20mA deadband to prevent hunting
 #define BACKOFF_STEP            300   // 0.8mm - enough to release stall
-#define EFFORT_HYSTERESIS   50 
 
 #define constrain(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 
@@ -99,38 +98,32 @@ static void gripper_regulate(void)
     
     int32_t posDiff = target_pos - current_pos;
     int32_t effortGap = target_effort_ma - current_effort_ma;
-    float Kp_effort = 1.5f;
+    float Kp_effort = 1.0f;
     
-    // OVERLOAD: Current exceeds target - back off (with cooldown)
-    if (effortGap < -EFFORT_HYSTERESIS && current_pos > GRIPPER_POS_MIN) {
-        uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-        if ((now - last_backoff_time) > 200) {
-            current_pos += BACKOFF_STEP;
-            if (current_pos > GRIPPER_POS_MAX) current_pos = GRIPPER_POS_MAX;
-            gripper_set_position(current_pos);
-            last_backoff_time = now;
-        }
-        return;
-    }
-    
-    // OPENING - full speed
+    // 1. OPENING - full speed
     if (posDiff > 0) {
         current_pos = target_pos;
         gripper_set_position(current_pos);
     }
-    // CLOSING - dynamic effort control
-    else if (posDiff < 0 && effortGap > 0) {
-        int32_t dynamicStep = (int32_t)(effortGap * Kp_effort);
-        dynamicStep = constrain(dynamicStep, 10, 400);
-        
-        if (abs(posDiff) > dynamicStep) {
-            current_pos -= dynamicStep;
+    // 2. CLOSING
+    else if (posDiff < 0) {
+        if (effortGap > 80) {
+            int32_t dynamicStep = (int32_t)(effortGap * Kp_effort);
+            dynamicStep = constrain(dynamicStep, 10, 100);
+            
+            if (abs(posDiff) > dynamicStep) {
+                current_pos -= dynamicStep;
+            } else {
+                current_pos = target_pos;
+            }
         } else {
-            current_pos = target_pos;
+            // OVERLOAD - back off
+            current_pos += 50;
         }
-        current_pos = constrain(current_pos, GRIPPER_POS_MIN, GRIPPER_POS_MAX);
-        gripper_set_position(current_pos);
     }
+    
+    current_pos = constrain(current_pos, GRIPPER_POS_MIN, GRIPPER_POS_MAX);
+    gripper_set_position(current_pos);
 }
 
 // Public: Set target position (microns)
