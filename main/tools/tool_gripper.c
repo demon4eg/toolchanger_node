@@ -44,6 +44,16 @@ static int32_t current_effort_ma = 0;
 static float filtered_effort = 0;
 static float alpha = 0.13f;  // EMA filter
 
+
+// In tool_gripper.c
+int32_t gripper_get_current_position(void) { return current_pos; }
+int32_t gripper_get_current_effort(void) { return current_effort_ma; }
+uint8_t gripper_get_status(void) 
+{
+    if (target_pos == current_pos) return 0;  // idle
+    if (target_pos < current_pos) return 1;   // closing
+    return 2;  // opening
+}
 // Convert position (microns) to PWM duty
 static uint32_t pos_to_duty(int32_t pos)
 {

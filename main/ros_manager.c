@@ -92,22 +92,29 @@ static void command_callback(const void *msgin)
     }
 }
 
-void ros_publish_status(uint8_t command, uint16_t tool_id, uint8_t state, uint8_t error_code, float temperature)
+void ros_publish_status(uint8_t command, uint16_t tool_id, uint8_t state, 
+                        uint8_t error_code, float temperature, uint8_t tool_type,
+                        uint16_t tool_position, uint16_t tool_effort, uint8_t tool_status)
 {
     manipulator_6dof_interfaces__msg__ToolChanger msg;
     manipulator_6dof_interfaces__msg__ToolChanger__init(&msg);
+    
     msg.command = command;
     msg.tool_id = tool_id;
     msg.state = state;
     msg.error_code = error_code;
     msg.temperature = temperature;
     
+    // New fields
+    msg.tool_type = tool_type;
+    msg.tool_position = tool_position;
+    msg.tool_effort = tool_effort;
+    msg.tool_status = tool_status;
+    
     rcl_ret_t ret = rcl_publish(&status_pub, &msg, NULL);
-    // if (ret != RCL_RET_OK) {
-    //     ESP_LOGE(TAG, "rcl_publish failed: %ld", (long)ret);
-    // } else {
-    //     ESP_LOGI(TAG, "rcl_publish SUCCESS");
-    // }
+    if (ret != RCL_RET_OK) {
+        ESP_LOGE(TAG, "rcl_publish failed: %ld", (long)ret);
+    }
 }
 
 static bool init_micro_ros(rclc_support_t *support, rcl_node_t *node, 

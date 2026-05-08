@@ -2,6 +2,7 @@
 #include "ros_manager.h"
 #include "hardware.h"
 #include "tool_manager.h"
+#include "tool_gripper.h"
 #include "led_status.h"
 #include "ds18b20_task.h"
 #include "esp_log.h"
@@ -97,8 +98,7 @@ static void publish_current_status(void)
     uint16_t tool_id = cached_tool_id;
     float temp = (cached_tool_id != 0) ? ds18b20_get_temp() : -273.0f;
     
-    uint8_t state_code = 0, error_code = 0;
-    
+    uint8_t state_code = 0;
     switch(current_state) {
         case IDLE:       state_code = 0; break;
         case ATTACHED:   state_code = 2; break;
@@ -106,11 +106,22 @@ static void publish_current_status(void)
         default:         state_code = 0; break;
     }
     
-    if (warning_published) {
-        error_code = 4;
+    uint8_t error_code = warning_published ? 4 : 0;
+    
+    // Get tool-specific data
+    uint8_t tool_type = tool_manager_get_current_tool_type();
+    uint16_t tool_position = 0;
+    uint16_t tool_effort = 0;
+    uint8_t tool_status = 0;
+    
+    if (tool_type == TOOL_TYPE_GRIPPER) {
+        tool_position = (uint16_t)gripper_get_current_position();
+        tool_effort = (uint16_t)gripper_get_current_effort();
+        tool_status = gripper_get_status();
     }
     
-    ros_publish_status(last_processed_command, tool_id, state_code, error_code, temp);
+    ros_publish_status(last_processed_command, tool_id, state_code, error_code, temp,
+                       tool_type, tool_position, tool_effort, tool_status);
 }
 
 void state_machine_button_unlock(void)
