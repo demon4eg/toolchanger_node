@@ -121,6 +121,16 @@ static void publish_current_status(void)
         tool_effort = (uint16_t)gripper_get_current_effort();
         tool_status = gripper_get_status();
     }
+    else if (tool_type == TOOL_TYPE_STEPPER) {
+        tool_position = stepper_get_current_position();
+        tool_effort = stepper_get_current_speed();
+        tool_status = stepper_get_status();
+    }
+    else if (tool_type == TOOL_TYPE_PWM) {
+        tool_position = pwm_get_current_velocity();
+        tool_effort = pwm_get_current_effort();
+        tool_status = pwm_get_status();
+    }
     
     ros_publish_status(last_processed_command, tool_id, state_code, error_code, temp,
                        tool_type, tool_position, tool_effort, tool_status);
