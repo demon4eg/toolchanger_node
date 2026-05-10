@@ -3,6 +3,8 @@
 #include "ds18b20_task.h"
 #include <stddef.h>
 #include "tool_gripper.h"
+#include "tool_stepper.h"
+#include "tool_pwm.h"
 
 #define MAX_TOOLS 5
 #define MAX_KNOWN_TOOLS 10
@@ -14,7 +16,8 @@
 static tool_info_t known_tools[] = {
     { 65320, TOOL_TYPE_GRIPPER, "Gripper", 0, 300 },      // Your gripper
     // Add more tools as you develop them
-    // { 1234, TOOL_TYPE_DISPENSER, "Dispenser", 400, 500 },
+    { 63528, TOOL_TYPE_STEPPER, "Stepper", 400, 500 },
+    { 2088, TOOL_TYPE_PWM, "PWM Tool", 171, 172 },
     // { 5678, TOOL_TYPE_VACUUM, "Vacuum", 600, 700 },
     // { 9999, TOOL_TYPE_UART, "UART Tool", 800, 900 },
 };
@@ -96,6 +99,12 @@ void tool_manager_process_command(uint8_t command, uint16_t tool_id)
             break;
         case TOOL_TYPE_DISPENSER:
             // tool_dispenser_process_command(command, 0, 0);
+            break;
+            case TOOL_TYPE_STEPPER:
+            tool_stepper_process_command(command, 0, 0);
+            break;
+        case TOOL_TYPE_PWM:
+            tool_pwm_process_command(command, 0, 0);
             break;
         default:
             ESP_LOGW(TAG, "Unknown tool type: %d", type);

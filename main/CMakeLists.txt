@@ -6,6 +6,8 @@ idf_component_register(
         hardware/tool_manager.c
         hardware/led_status.c
         tools/tool_gripper.c
+        tools/tool_stepper.c
+        tools/tool_pwm.c
         state_machine.c
         hardware/hardware.c
         hardware/ina3221_monitor.c

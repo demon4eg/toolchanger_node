@@ -18,6 +18,22 @@
 #define TOOL_CMD_VACUUM_STR_MIN      62
 #define TOOL_CMD_VACUUM_STR_MAX      71
 
+// New: Stepper tool
+#define TOOL_CMD_STEPPER_POS_MIN     70
+#define TOOL_CMD_STEPPER_POS_MAX     100
+#define TOOL_CMD_STEPPER_SPEED_MIN   101
+#define TOOL_CMD_STEPPER_SPEED_MAX   120
+#define TOOL_CMD_STEPPER_HOME        121
+#define TOOL_CMD_STEPPER_STOP        122
+
+// New: PWM tool
+#define TOOL_CMD_PWM_VEL_MIN         130
+#define TOOL_CMD_PWM_VEL_MAX         150
+#define TOOL_CMD_PWM_EFFORT_MIN      151
+#define TOOL_CMD_PWM_EFFORT_MAX      170
+#define TOOL_CMD_PWM_ON              171
+#define TOOL_CMD_PWM_OFF             172
+
 #define TOOL_CMD_RESERVED_MIN        80
 #define TOOL_CMD_RESERVED_MAX        99
 
@@ -26,10 +42,11 @@
 typedef enum {
     TOOL_TYPE_NONE = 0,
     TOOL_TYPE_GRIPPER = 1,
-    TOOL_TYPE_DISPENSER = 2,
-    TOOL_TYPE_VACUUM = 3,
-    TOOL_TYPE_UART = 4,
-    TOOL_TYPE_CUSTOM = 5
+    TOOL_TYPE_STEPPER = 2,
+    TOOL_TYPE_PWM = 3,
+    TOOL_TYPE_DISPENSER = 4,
+    TOOL_TYPE_VACUUM = 5,
+    TOOL_TYPE_UART = 6,
 } tool_type_t;
 
 // Tool info structure

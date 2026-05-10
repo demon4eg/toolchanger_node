@@ -3,6 +3,8 @@
 #include "hardware.h"
 #include "tool_manager.h"
 #include "tool_gripper.h"
+#include "tool_stepper.h"
+#include "tool_pwm.h"
 #include "led_status.h"
 #include "ds18b20_task.h"
 #include "esp_log.h"
@@ -191,6 +193,14 @@ void state_machine_init(void)
             extern void tool_gripper_init(void);
             tool_gripper_init();
         }
+        else if (type == TOOL_TYPE_STEPPER) {
+            extern void tool_stepper_init(void);
+            tool_stepper_init();
+        }
+        else if (type == TOOL_TYPE_PWM) {
+            extern void tool_pwm_init(void);
+            tool_pwm_init();
+        }
         // Add other tool types here as needed
         hardware_set_7v8(true);
         enter_state(ATTACHED);
@@ -311,6 +321,14 @@ void state_machine_task(void *arg)
                 if (type == TOOL_TYPE_GRIPPER) {
                     extern void tool_gripper_init(void);
                     tool_gripper_init();
+                }
+                else if (type == TOOL_TYPE_STEPPER) {
+                    extern void tool_stepper_init(void);
+                    tool_stepper_init();
+                }
+                else if (type == TOOL_TYPE_PWM) {
+                    extern void tool_pwm_init(void);
+                    tool_pwm_init();
                 }
                 // Add other tool types here as needed
                 hardware_set_5v(true);
