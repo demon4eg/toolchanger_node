@@ -6,6 +6,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_wifi.h"
 
 #include <uros_network_interfaces.h>
 #include <rcl/rcl.h>
@@ -275,7 +276,7 @@ bool ros_manager_is_connected(void)
 
 void ros_manager_init(void)
 {
-
+    esp_wifi_set_ps(WIFI_PS_NONE);
     tool_manager_init();     // Initialize tool manager
 
     xTaskCreate(micro_ros_task, "uros_task", CONFIG_MICRO_ROS_APP_STACK, NULL, 
