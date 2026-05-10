@@ -43,3 +43,4 @@ Add acceleration ramping to stepper if needed
 Implement limit switch homing for stepper
 
 Close the loop on PWM effort control (current feedback PID)
+

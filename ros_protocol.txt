@@ -1,0 +1,159 @@
+Gripper ROS Protocol - Easy Integration Guide
+
+Message Format (already in ToolChanger.msg)
+
+
+# Command topic: /toolchanger/command
+# Status topic: /toolchanger/status
+
+Command Reference
+
+Command	Value	Function	Parameter Range
+
+Open	4	Fully open	Shortcut to 100% open
+
+Close	5	Fully close	Shortcut to 0% closed
+
+Position	6-24	Percentage open	6=10%, 15=50%, 24=90%
+
+Full Open	25	100% open	Maximum open position
+
+Min Effort	26	0mA	Minimum gripping force
+
+Low Effort	27-28	~120-240mA	Light grip
+
+Medium Effort	29-31	~360-480mA	Standard grip
+
+High Effort	32-34	~600-840mA	Strong grip
+
+Max Effort	35-36	~960-1200mA	Maximum force
+
+Position Mapping (commands 5-25)
+
+
+Command 5  → 0%   (fully closed)
+Command 10 → 25%  (1/4 open)
+Command 15 → 50%  (half open)
+Command 20 → 75%  (3/4 open)
+Command 25 → 100% (fully open)
+Effort Mapping (commands 26-36)
+
+Command 26 →   0mA  (no force)
+Command 27 → 120mA  (very light)
+Command 28 → 240mA  (light)
+Command 29 → 360mA  (light-medium)
+Command 30 → 480mA  (medium)
+Command 31 → 600mA  (medium-strong)
+Command 32 → 720mA  (strong)
+Command 33 → 840mA  (stronger)
+Command 34 → 960mA  (very strong)
+Command 35 → 1080mA (max-1)
+Command 36 → 1200mA (max force)
+ROS Command Examples
+
+# Open gripper fully
+ros2 topic pub /toolchanger/command manipulator_6dof_interfaces/msg/ToolChanger "{command: 25, tool_id: 0}"
+
+# Close gripper with medium force (480mA)
+ros2 topic pub /toolchanger/command manipulator_6dof_interfaces/msg/ToolChanger "{command: 30, tool_id: 0}"
+ros2 topic pub /toolchanger/command manipulator_6dof_interfaces/msg/ToolChanger "{command: 5, tool_id: 0}"
+
+# Gentle grip on delicate object (240mA)
+ros2 topic pub /toolchanger/command manipulator_6dof_interfaces/msg/ToolChanger "{command: 28, tool_id: 0}"
+ros2 topic pub /toolchanger/command manipulator_6dof_interfaces/msg/ToolChanger "{command: 5, tool_id: 0}"
+
+# Set position to 50% open
+ros2 topic pub /toolchanger/command manipulator_6dof_interfaces/msg/ToolChanger "{command: 15, tool_id: 0}"
+
+# Get current status
+ros2 topic echo /toolchanger/status
+Python Client Example
+python
+import rclpy
+from rclpy.node import Node
+from manipulator_6dof_interfaces.msg import ToolChanger
+
+class GripperController(Node):
+    def __init__(self):
+        super().__init__('gripper_controller')
+        self.cmd_pub = self.create_publisher(ToolChanger, '/toolchanger/command', 10)
+        self.status_sub = self.create_subscription(ToolChanger, '/toolchanger/status', self.status_callback, 10)
+    
+    def open(self):
+        msg = ToolChanger()
+        msg.command = 25  # fully open
+        msg.tool_id = 0
+        self.cmd_pub.publish(msg)
+    
+    def close(self, effort=30):  # effort: 26-36
+        msg = ToolChanger()
+        msg.command = effort  # set effort first
+        msg.tool_id = 0
+        self.cmd_pub.publish(msg)
+        
+        # Small delay before closing
+        rclpy.spin_once(self, timeout_sec=0.1)
+        
+        msg.command = 5  # close
+        self.cmd_pub.publish(msg)
+    
+    def set_position(self, percent):  # 0-100
+        cmd = 5 + int(percent / 100 * 20)  # map 0-100 to 5-25
+        cmd = max(5, min(25, cmd))
+        msg = ToolChanger()
+        msg.command = cmd
+        msg.tool_id = 0
+        self.cmd_pub.publish(msg)
+    
+    def status_callback(self, msg):
+        if msg.tool_type == 1:  # gripper
+            self.get_logger().info(
+                f"Position: {msg.tool_position} microns | "
+                f"Current: {msg.tool_effort} mA | "
+                f"Status: {msg.tool_status}"
+            )
+
+# Usage
+gripper = GripperController()
+gripper.set_position(50)  # half open
+gripper.open()            # fully open
+gripper.close(effort=28)  # close with light force
+Status Message Fields for Gripper
+Field	Value	Meaning
+tool_type	1	Gripper attached
+tool_position	0-20000	Position in microns (0=closed, 20000=open)
+tool_effort	0-1200	Current in mA (gripping force)
+tool_status	0	Idle (not moving)
+tool_status	1	Closing (moving to close)
+tool_status	2	Opening (moving to open)
+Typical Sequence for Gripping
+
+# 1. Open gripper
+gripper.open()
+
+# 2. Move arm to object position (arm controller)
+
+# 3. Set gripping force (e.g., 480mA)
+msg.command = 30
+cmd_pub.publish(msg)
+
+# 4. Close gripper
+msg.command = 5
+cmd_pub.publish(msg)
+
+# 5. Wait for current to stabilize
+# Status will show effort approaching 480mA
+
+# 6. Lift object
+
+# 7. Release
+gripper.open()
+Launch File Example
+xml
+<!-- gripper_controller.launch.py -->
+<launch>
+    <node pkg="your_package" exec="gripper_node" name="gripper_controller">
+        <param name="default_effort" value="30"/>
+        <param name="close_delay" value="0.5"/>
+    </node>
+</launch>
